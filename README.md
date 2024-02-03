@@ -1,0 +1,2 @@
+# GoNet
+An IRC network
