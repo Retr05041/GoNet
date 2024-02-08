@@ -1,2 +1,2 @@
-# GoNet
+# Monarch
 An IRC network
