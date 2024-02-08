@@ -22,6 +22,12 @@ func main() {
         text, _ := reader.ReadString('\n')
         fmt.Fprintf(conn, text + "\n")
         message, _ := bufio.NewReader(conn).ReadString('\n')
-        fmt.Print("Message from server: "+message)
+
+        if message == ":quit" {
+            conn.Close()
+            return
+        }
+
+        fmt.Print("Message from server: " + message)
     }
 }
