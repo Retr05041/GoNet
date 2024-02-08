@@ -1,71 +1,66 @@
-package main 
+package main
 
 import (
-    "fmt"
-    "log"
-    "net"
-	"strings"
+	"fmt"
+	"io"
+	"log"
+	"net"
 )
 
-func HandleConnection(conn net.Conn) {
-    defer conn.Close()
-
-    buf := make([]byte, 1024)
-
-    for {
-        userInput, err := conn.Read(buf)
-        if err != nil {
-            log.Println(err)
-            return
-        }
-        data := string(buf[:userInput])
-        fmt.Printf("Received: %s", data)
-
-		if strings.TrimRight(data, "\n") == ":quit" {
-			data := ":quit"
-			_, err = conn.Write([]byte(data))
-			conn.Close()
-			return
-		}
-
-        _, err = conn.Write([]byte(data))
-        if err != nil {
-            log.Println(err)
-            return
-        }
-    }
+type server struct {
+	clients []io.Writer
 }
 
+func (s *server) addClient(c net.Conn) {
+	s.clients = append(s.clients, c)
+}
+
+func (s *server) writeAll(data string) {
+	for _, cl := range s.clients {
+		_, err := cl.Write([]byte(data))
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func (s *server) HandleConnection(conn net.Conn) {
+	defer conn.Close()
+
+	buf := make([]byte, 1024)
+
+	for {
+		userInput, err := conn.Read(buf)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		data := string(buf[:userInput])
+		fmt.Printf("Received: %s", data)
+
+		s.writeAll(data)
+	}
+}
 
 func main() {
+	fmt.Println("Starting server...")
+	srv := &server{}
+
 	listener, err := net.Listen("tcp", ":8000")
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Listening on port 8000...")
 	defer listener.Close()
-	
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Fatal(err)
 		}
-		go HandleConnection(conn)
+
+		srv.addClient(conn)
+
+		go srv.HandleConnection(conn)
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

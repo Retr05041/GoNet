@@ -1,12 +1,25 @@
-package main 
+package main
 
 import (
 	"bufio"
-    "fmt"
-    "log"
-    "net"
-    "os"
+	"fmt"
+	"io"
+	"log"
+	"net"
+	"os"
 )
+
+func recvLoop(r io.Reader) {
+	inbuf := make([]byte, 1024)
+	for {
+		n, err := r.Read(inbuf[:])
+		if err != nil {
+			log.Println(err)
+			break
+		}
+		fmt.Println(string(inbuf[:n]))
+	}
+}
 
 func main() {
 
@@ -16,18 +29,21 @@ func main() {
 	}
 	defer conn.Close()
 
-	for {
-        reader := bufio.NewReader(os.Stdin)
-        fmt.Print("Text to send: ")
-        text, _ := reader.ReadString('\n')
-        fmt.Fprintf(conn, text + "\n")
-        message, _ := bufio.NewReader(conn).ReadString('\n')
+	sc := bufio.NewScanner(os.Stdin)
+	rd := bufio.NewReader(conn)
+	go recvLoop(rd)
 
-        if message == ":quit" {
-            conn.Close()
-            return
-        }
+	for sc.Scan() {
+		if sc.Err() != nil {
+			log.Println(sc.Err())
+		}
+		txt := sc.Text()
 
-        fmt.Print("Message from server: " + message)
-    }
+		b := []byte(txt + "\n")
+		_, err := conn.Write(b)
+		if err != nil {
+			fmt.Println("Failed to send data to the server!")
+			break
+		}
+	}
 }
