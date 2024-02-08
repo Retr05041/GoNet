@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"strings"
 )
 
 type server struct {
@@ -27,18 +29,17 @@ func (s *server) writeAll(data string) {
 func (s *server) HandleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	buf := make([]byte, 1024)
-
 	for {
-		userInput, err := conn.Read(buf)
+		clientData, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		data := string(buf[:userInput])
-		fmt.Printf("Received: %s", data)
 
-		s.writeAll(data)
+		cleanedData := strings.TrimSpace(string(clientData))
+		// fmt.Println(cleanedData)
+
+		s.writeAll(cleanedData)
 	}
 }
 
