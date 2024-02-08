@@ -1,7 +1,27 @@
 package main 
 
-import "fmt"
+import (
+	"bufio"
+    "fmt"
+    "log"
+    "net"
+    "os"
+)
 
 func main() {
-	fmt.Println("Hello, World.")
+
+	conn, err := net.Dial("tcp", "localhost:8000")
+	if err != nil {
+		log.Fatalf("Failed to dial: %v", err)
+	}
+	defer conn.Close()
+
+	for {
+        reader := bufio.NewReader(os.Stdin)
+        fmt.Print("Text to send: ")
+        text, _ := reader.ReadString('\n')
+        fmt.Fprintf(conn, text + "\n")
+        message, _ := bufio.NewReader(conn).ReadString('\n')
+        fmt.Print("Message from server: "+message)
+    }
 }
