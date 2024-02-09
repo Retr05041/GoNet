@@ -9,10 +9,12 @@ import (
 	"os"
 )
 
-func recvLoop(r io.Reader) {
+// Display server response (life cycle)
+// Should be text coming in from others in the same channel (global)
+func recieveFromChannel(serverReader io.Reader) {
 	inbuf := make([]byte, 1024)
 	for {
-		n, err := r.Read(inbuf[:])
+		n, err := serverReader.Read(inbuf[:])
 		if err != nil {
 			log.Println(err)
 			break
@@ -21,26 +23,31 @@ func recvLoop(r io.Reader) {
 	}
 }
 
+// Runner for client
+// Connects to specified server, Creates a Scanner and Reader, and continuesly scans and reads
 func main() {
 
+	// Connection
 	conn, err := net.Dial("tcp", "localhost:8000")
 	if err != nil {
 		log.Fatalf("Failed to dial: %v", err)
 	}
 	defer conn.Close()
 
-	sc := bufio.NewScanner(os.Stdin)
-	rd := bufio.NewReader(conn)
-	go recvLoop(rd)
+	// Scanner for user input - Reader for server responses
+	serverScanner := bufio.NewScanner(os.Stdin)
+	clientReader := bufio.NewReader(conn)
+	go recieveFromChannel(clientReader)
 
-	for sc.Scan() {
-		if sc.Err() != nil {
-			log.Println(sc.Err())
+	// Scan user input
+	for serverScanner.Scan() {
+		if serverScanner.Err() != nil {
+			log.Println(serverScanner.Err())
 		}
-		txt := sc.Text()
+		data := serverScanner.Text()
 
-		b := []byte(txt + "\n")
-		_, err := conn.Write(b)
+		dataAsBytes := []byte(data + "\n")
+		_, err := conn.Write(dataAsBytes)
 		if err != nil {
 			fmt.Println("Failed to send data to the server!")
 			break
