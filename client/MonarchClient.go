@@ -9,6 +9,10 @@ import (
 	"os"
 )
 
+type clientInfo struct {
+	username string
+}
+
 // Display server response (life cycle)
 // Should be text coming in from others in the same channel (global)
 func recieveFromChannel(serverReader io.Reader) {
@@ -27,6 +31,11 @@ func recieveFromChannel(serverReader io.Reader) {
 // Connects to specified server, Creates a Scanner and Reader, and continuesly scans and reads
 func main() {
 
+	client := &clientInfo{}
+
+	fmt.Printf("Username: ")
+	fmt.Scanln(&client.username)
+
 	// Connection
 	conn, err := net.Dial("tcp", "localhost:8000")
 	if err != nil {
@@ -34,17 +43,22 @@ func main() {
 	}
 	defer conn.Close()
 
+	_, err = conn.Write([]byte(client.username + "\n"))
+	if err != nil {
+		fmt.Println("Failed to send username to the server!")
+	}
+
 	// Scanner for user input - Reader for server responses
-	serverScanner := bufio.NewScanner(os.Stdin)
-	clientReader := bufio.NewReader(conn)
-	go recieveFromChannel(clientReader)
+	serverReader := bufio.NewReader(conn)
+	go recieveFromChannel(serverReader)
+	clientScanner := bufio.NewScanner(os.Stdin)
 
 	// Scan user input
-	for serverScanner.Scan() {
-		if serverScanner.Err() != nil {
-			log.Println(serverScanner.Err())
+	for clientScanner.Scan() {
+		if clientScanner.Err() != nil {
+			log.Println(clientScanner.Err())
 		}
-		data := serverScanner.Text()
+		data := clientScanner.Text()
 
 		dataAsBytes := []byte(data + "\n")
 		_, err := conn.Write(dataAsBytes)

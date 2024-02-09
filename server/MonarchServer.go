@@ -44,6 +44,12 @@ func (s *server) writeAll(providingClient uuid.UUID, data string) {
 // Handle incoming connections
 func (s *server) HandleConnection(c client) {
 	defer c.clientConnection.Close()
+	clientName, err := bufio.NewReader(c.clientConnection).ReadString('\n')
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	c.username = strings.TrimRight(clientName, "\n")
 
 	for {
 		clientData, err := bufio.NewReader(c.clientConnection).ReadString('\n')
@@ -52,7 +58,7 @@ func (s *server) HandleConnection(c client) {
 			return
 		}
 
-		cleanedData := strings.TrimSpace(string(clientData))
+		cleanedData := c.username + ": " + strings.TrimSpace(strings.TrimRight(string(clientData), "\n"))
 		// fmt.Println(cleanedData)
 
 		s.writeAll(c.clientUUID, cleanedData)
