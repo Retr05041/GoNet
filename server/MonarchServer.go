@@ -57,7 +57,7 @@ func (s *server) HandleConnection(c client) {
 		fmt.Println(cleanedData)
 		// fmt.Println(cleanedData)
 
-		s.writeAll(c.clientUUID, cleanedData)
+		go s.writeAll(c.clientUUID, cleanedData)
 	}
 }
 
