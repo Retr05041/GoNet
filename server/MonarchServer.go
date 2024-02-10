@@ -44,12 +44,7 @@ func (s *server) writeAll(providingClient uuid.UUID, data string) {
 // Handle incoming connections
 func (s *server) HandleConnection(c client) {
 	defer c.clientConnection.Close()
-	clientName, err := bufio.NewReader(c.clientConnection).ReadString('\n')
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	c.username = strings.TrimRight(clientName, "\n")
+	// defer fmt.Println("Connection closed with client.")
 
 	for {
 		clientData, err := bufio.NewReader(c.clientConnection).ReadString('\n')
@@ -58,10 +53,11 @@ func (s *server) HandleConnection(c client) {
 			return
 		}
 
-		cleanedData := c.username + ": " + strings.TrimSpace(strings.TrimRight(string(clientData), "\n"))
+		cleanedData := strings.TrimSpace(strings.TrimRight(string(clientData), "\n"))
+		fmt.Println(cleanedData)
 		// fmt.Println(cleanedData)
 
-		s.writeAll(c.clientUUID, cleanedData)
+		go s.writeAll(c.clientUUID, cleanedData)
 	}
 }
 
@@ -92,6 +88,7 @@ func main() {
 			clientUUID:       uuid.New(),
 		}
 
+		// fmt.Println("Connection made with client.")
 		// Add client to the client list then begin client life cycle
 		srv.addClient(newClient)
 		go srv.HandleConnection(newClient)
