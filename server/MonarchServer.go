@@ -46,8 +46,6 @@ func (s *server) HandleConnection(c client) {
 	defer c.clientConnection.Close()
 	// defer fmt.Println("Connection closed with client.")
 
-	c.username = strings.TrimRight("Anonymous", "\n")
-
 	for {
 		clientData, err := bufio.NewReader(c.clientConnection).ReadString('\n')
 		if err != nil {
@@ -55,7 +53,7 @@ func (s *server) HandleConnection(c client) {
 			return
 		}
 
-		cleanedData := c.username + ": " + strings.TrimSpace(strings.TrimRight(string(clientData), "\n"))
+		cleanedData := strings.TrimSpace(strings.TrimRight(string(clientData), "\n"))
 		fmt.Println(cleanedData)
 		// fmt.Println(cleanedData)
 

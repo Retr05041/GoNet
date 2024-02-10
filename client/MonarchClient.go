@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"strings"
@@ -12,20 +14,30 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type ChannelModel struct {
-	// username string
-	connection net.Conn
-	// serverReader io.Reader
-	viewport    viewport.Model
-	messages    []string
-	textarea    textarea.Model
-	senderStyle lipgloss.Style
-	err         error
+type model struct {
+	username     string
+	connection   net.Conn
+	serverReader io.Reader
+	viewport     viewport.Model
+	messages     []string
+	textarea     textarea.Model
+	senderStyle  lipgloss.Style
+	err          error
 }
 type errMsg error
 type serverMsg string
 
-func (m ChannelModel) sendToServer(msg string) {
+// Receive From Server: used as a tea.Cmd to get messages continuesly from the server each life cycle
+func (m model) recieveFromServer() tea.Msg {
+	inbuf := make([]byte, 1024)
+	n, err := m.serverReader.Read(inbuf[:])
+	if err != nil {
+		log.Println(err)
+	}
+	return serverMsg(string(inbuf[:n]))
+}
+
+func (m model) sendToServer(msg string) {
 	// fmt.Println("Sending: " + m)
 	_, err := m.connection.Write([]byte(msg + "\n"))
 	if err != nil {
@@ -35,7 +47,7 @@ func (m ChannelModel) sendToServer(msg string) {
 }
 
 // Initalize and return a base model
-func initialChannelModel(c net.Conn) ChannelModel {
+func initialmodel(c net.Conn, name string) model {
 
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
@@ -58,23 +70,25 @@ Type a message and press Enter to send.`)
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
-	return ChannelModel{
-		connection:  c,
-		textarea:    ta,
-		messages:    []string{},
-		viewport:    vp,
-		senderStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
-		err:         nil,
+	return model{
+		username:     name,
+		connection:   c,
+		serverReader: bufio.NewReader(c),
+		textarea:     ta,
+		messages:     []string{},
+		viewport:     vp,
+		senderStyle:  lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
+		err:          nil,
 	}
 }
 
 // Returns a text area tp type in
-func (m ChannelModel) Init() tea.Cmd {
-	return textarea.Blink
+func (m model) Init() tea.Cmd {
+	return tea.Batch(textarea.Blink, m.recieveFromServer)
 }
 
 // Updates TUI Model every run
-func (m ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
@@ -85,6 +99,11 @@ func (m ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check incomming message
 	switch msg := msg.(type) {
+	case serverMsg:
+		m.messages = append(m.messages, m.senderStyle.Render(string(msg)))
+		m.viewport.SetContent(strings.Join(m.messages, "\n"))
+		m.viewport.GotoBottom()
+
 	// if its a keyboard input
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -92,9 +111,9 @@ func (m ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fmt.Println(m.textarea.Value())
 			return m, tea.Quit
 		case tea.KeyEnter:
-			m.sendToServer(m.textarea.Value())
 			m.messages = append(m.messages, m.senderStyle.Render("You: ")+m.textarea.Value())
 			m.viewport.SetContent(strings.Join(m.messages, "\n"))
+			m.sendToServer(m.username + ": " + m.textarea.Value())
 			m.textarea.Reset()
 			m.viewport.GotoBottom()
 		}
@@ -105,11 +124,11 @@ func (m ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	return m, tea.Batch(tiCmd, vpCmd)
+	return m, tea.Batch(tiCmd, vpCmd, m.recieveFromServer)
 }
 
 // Displays TUI model
-func (m ChannelModel) View() string {
+func (m model) View() string {
 	return fmt.Sprintf(
 		"%s\n\n%s",
 		m.viewport.View(),
@@ -127,19 +146,12 @@ func main() {
 	}
 	defer conn.Close()
 
-	currentModel := initialChannelModel(conn)
+	var selectedName string
+	fmt.Printf("Please enter your username: ")
+	fmt.Scanln(&selectedName)
 
-	clientRunner := tea.NewProgram(currentModel)
+	clientRunner := tea.NewProgram(initialmodel(conn, selectedName))
 	if _, err := clientRunner.Run(); err != nil {
 		log.Fatal(err)
 	}
 }
-
-// inbuf := make([]byte, 1024)
-// for {
-// 	n, err := serverReader.Read(inbuf[:])
-// 	if err != nil {
-// 		log.Println(err)
-// 	}
-// }
-// 	return string(inbuf[:n])
