@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Model for our TUI: Holds the anatomy of *every* view we want to see
 type model struct {
 	username     string
 	connection   net.Conn
@@ -24,30 +25,13 @@ type model struct {
 	senderStyle  lipgloss.Style
 	err          error
 }
+
+// Custom types for our Model to use
 type errMsg error
 type serverMsg string
 
-// Receive From Server: used as a tea.Cmd to get messages continuesly from the server each life cycle
-func (m model) recieveFromServer() tea.Msg {
-	inbuf := make([]byte, 1024)
-	n, err := m.serverReader.Read(inbuf[:])
-	if err != nil {
-		log.Println(err)
-	}
-	return serverMsg(string(inbuf[:n]))
-}
-
-func (m model) sendToServer(msg string) {
-	// fmt.Println("Sending: " + m)
-	_, err := m.connection.Write([]byte(msg + "\n"))
-	if err != nil {
-		log.Println(err)
-	}
-	// fmt.Println("Message sent!")
-}
-
 // Initalize and return a base model
-func initialmodel(c net.Conn, name string) model {
+func CreateModel(c net.Conn, name string) model {
 
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
@@ -82,13 +66,18 @@ Type a message and press Enter to send.`)
 	}
 }
 
-// Returns a text area tp type in
+// Init: Start commands for model
 func (m model) Init() tea.Cmd {
-	return tea.Batch(textarea.Blink, m.recieveFromServer)
+	return tea.Batch(textarea.Blink, m.RecieveFromServer)
 }
 
-// Updates TUI Model every run
+// Update: Main update function.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return UpdateChannel(msg, m)
+}
+
+// UpdateChannel: Updates the ViewChannel
+func UpdateChannel(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
@@ -113,7 +102,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			m.messages = append(m.messages, m.senderStyle.Render("You: ")+m.textarea.Value())
 			m.viewport.SetContent(strings.Join(m.messages, "\n"))
-			m.sendToServer(m.username + ": " + m.textarea.Value())
+			m.SendToServer(m.username + ": " + m.textarea.Value())
 			m.textarea.Reset()
 			m.viewport.GotoBottom()
 		}
@@ -124,16 +113,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	return m, tea.Batch(tiCmd, vpCmd, m.recieveFromServer)
+	return m, tea.Batch(tiCmd, vpCmd, m.RecieveFromServer)
 }
 
-// Displays TUI model
+// View: Views selected view
 func (m model) View() string {
+	return ViewChannel(m)
+}
+
+// ViewChannel: Displays Channel TUI
+func ViewChannel(m model) string {
 	return fmt.Sprintf(
 		"%s\n\n%s",
 		m.viewport.View(),
 		m.textarea.View(),
 	) + "\n\n"
+}
+
+// ReceiveFromServer: tea.Cmd to get messages continuesly from the selected server each cycle through the UpdateChannel()
+func (m model) RecieveFromServer() tea.Msg {
+	inbuf := make([]byte, 1024)
+	n, err := m.serverReader.Read(inbuf[:])
+	if err != nil {
+		log.Println(err)
+	}
+	return serverMsg(string(inbuf[:n]))
+}
+
+// SentToServer: Send a given message to the selected server to be displayed in the current ViewChannel()
+func (m model) SendToServer(msg string) {
+	_, err := m.connection.Write([]byte(msg + "\n"))
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 // Runner for client
@@ -150,7 +162,7 @@ func main() {
 	fmt.Printf("Please enter your username: ")
 	fmt.Scanln(&selectedName)
 
-	clientRunner := tea.NewProgram(initialmodel(conn, selectedName))
+	clientRunner := tea.NewProgram(CreateModel(conn, selectedName))
 	if _, err := clientRunner.Run(); err != nil {
 		log.Fatal(err)
 	}
