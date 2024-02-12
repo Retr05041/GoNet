@@ -14,25 +14,25 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Model for our TUI: Holds the anatomy of *every* view we want to see
+// model: Holds the anatomy of every view we want to see in our TUI
 type model struct {
-	username     string
-	connection   net.Conn
-	serverReader io.Reader
-	viewport     viewport.Model
-	messages     []string
-	textarea     textarea.Model
-	senderStyle  lipgloss.Style
-	err          error
+	username     string         // Given username
+	connection   net.Conn       // Connection interface
+	serverReader io.Reader      // Connction used as Reader from server
+	viewport     viewport.Model // Viewport model
+	messages     []string       // Holds the messages for the viewport
+	textarea     textarea.Model // Text area for user input
+	senderStyle  lipgloss.Style // Styles
+	err          error          // If there is an error
 }
 
-// Custom types for our Model to use
-type errMsg error
-type serverMsg string
+type errMsg error     // errorMSg: to wrap error messages for the model to display
+type serverMsg string // serverMsg: to wrap server messages for the model to display
 
-// Initalize and return a base model
+// CreateModel: Creates the base model for our TUI
 func CreateModel(c net.Conn, name string) model {
 
+	// model.textarea setup
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
 	ta.Focus()
@@ -48,12 +48,14 @@ func CreateModel(c net.Conn, name string) model {
 
 	ta.ShowLineNumbers = false
 
+	// model.viewport setup
 	vp := viewport.New(30, 5)
 	vp.SetContent(`Welcome to the chat room!
 Type a message and press Enter to send.`)
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
+	// Return base model
 	return model{
 		username:     name,
 		connection:   c,
@@ -74,6 +76,11 @@ func (m model) Init() tea.Cmd {
 // Update: Main update function.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return UpdateChannel(msg, m)
+}
+
+// View: Views selected view
+func (m model) View() string {
+	return ViewChannel(m)
 }
 
 // UpdateChannel: Updates the ViewChannel
@@ -116,11 +123,6 @@ func UpdateChannel(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(tiCmd, vpCmd, m.RecieveFromServer)
 }
 
-// View: Views selected view
-func (m model) View() string {
-	return ViewChannel(m)
-}
-
 // ViewChannel: Displays Channel TUI
 func ViewChannel(m model) string {
 	return fmt.Sprintf(
@@ -148,8 +150,7 @@ func (m model) SendToServer(msg string) {
 	}
 }
 
-// Runner for client
-// Connects to specified server, Creates a Scanner and Reader, and continuesly scans and reads
+// main: Runner for Client
 func main() {
 	// Connection
 	conn, err := net.Dial("tcp", "localhost:8000")
@@ -158,10 +159,12 @@ func main() {
 	}
 	defer conn.Close()
 
+	// Username
 	var selectedName string
 	fmt.Printf("Please enter your username: ")
 	fmt.Scanln(&selectedName)
 
+	// Run model
 	clientRunner := tea.NewProgram(CreateModel(conn, selectedName))
 	if _, err := clientRunner.Run(); err != nil {
 		log.Fatal(err)

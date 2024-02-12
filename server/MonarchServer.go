@@ -11,25 +11,26 @@ import (
 	"github.com/google/uuid"
 )
 
-// Struct for server based info
+// server: Struct for holding server info
 type server struct {
+	// List of clients
 	clients []client
 }
 
-// Struct for individual Client info
+// client: Struct for holding client info
 type client struct {
-	username         string
-	clientWriter     io.Writer
-	clientConnection net.Conn
-	clientUUID       uuid.UUID
+	username         string    // Clients given username for global communication
+	clientWriter     io.Writer // Uses conn as it's io.Writer
+	clientConnection net.Conn  // Connection interface
+	clientUUID       uuid.UUID // Unique UUID for each client
 }
 
-// Add a client to the server struct
+// addClient: Add client to list of clients on server
 func (s *server) addClient(c client) {
 	s.clients = append(s.clients, c)
 }
 
-// Send data to every client in the channel
+// writeAll: Send a string to every client the server knows excluding the providingClient
 func (s *server) writeAll(providingClient uuid.UUID, data string) {
 	for _, cl := range s.clients {
 		if cl.clientUUID != providingClient {
@@ -41,7 +42,7 @@ func (s *server) writeAll(providingClient uuid.UUID, data string) {
 	}
 }
 
-// Handle incoming connections
+// HandleConnections: Main life cycle for every client connection
 func (s *server) HandleConnection(c client) {
 	defer c.clientConnection.Close()
 	// defer fmt.Println("Connection closed with client.")
@@ -61,7 +62,7 @@ func (s *server) HandleConnection(c client) {
 	}
 }
 
-// Runner for the server
+// main: Runner for server
 func main() {
 	fmt.Println("Starting server...")
 	srv := &server{}
@@ -73,7 +74,7 @@ func main() {
 	fmt.Println("Listening on port 8000...")
 	defer listener.Close()
 
-	// Do this forever
+	// Accept incoming connections forever
 	for {
 		// Accept a new connection
 		conn, err := listener.Accept()
