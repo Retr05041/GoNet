@@ -19,3 +19,4 @@ if [ ! -d /usr/local/go  ]; then
     echo "Skipping..."
   fi
 fi
+

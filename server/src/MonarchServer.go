@@ -26,12 +26,13 @@ type client struct {
 }
 
 // addClient: Add client to list of clients on server
-func (s *server) addClient(c client) {
+func (s *server) AddClient(c client) int {
 	s.clients = append(s.clients, c)
+  return 1
 }
 
 // writeAll: Send a string to every client the server knows excluding the providingClient
-func (s *server) writeAll(providingClient uuid.UUID, data string) {
+func (s *server) WriteAll(providingClient uuid.UUID, data string) {
 	for _, cl := range s.clients {
 		if cl.clientUUID != providingClient {
 			_, err := cl.clientWriter.Write([]byte(data))
@@ -58,7 +59,7 @@ func (s *server) HandleConnection(c client) {
 		fmt.Println(cleanedData)
 		// fmt.Println(cleanedData)
 
-		go s.writeAll(c.clientUUID, cleanedData)
+		go s.WriteAll(c.clientUUID, cleanedData)
 	}
 }
 
@@ -91,7 +92,7 @@ func main() {
 
 		// fmt.Println("Connection made with client.")
 		// Add client to the client list then begin client life cycle
-		srv.addClient(newClient)
+		srv.AddClient(newClient)
 		go srv.HandleConnection(newClient)
 	}
 }

@@ -1,6 +1,6 @@
-module MonarchClient
+module github.com/Retr05041/Monarch/client
 
-go 1.18.1
+go 1.23
 
 require (
 	github.com/charmbracelet/bubbles v0.18.0

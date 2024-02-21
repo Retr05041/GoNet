@@ -12,3 +12,8 @@ An IRC network
   - [ ] Username inputer
 - [ ] Make Client a little more pretty
 - [ ] Write unit test and godoc everything made so far
+
+# Setup
+From root directory: `go work init ./src/client ./src/server`
+
+Run client or server from their respective directories
